@@ -2,8 +2,13 @@
 # IntelliJ project files
 *.idea
 *.iml
+*.iws
+*.ipr
 out
 gen
 bin/*
 www/*
+build/*
+.gradle/*
+uuids.txt
 
