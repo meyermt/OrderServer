@@ -24,7 +24,7 @@ public class OrderHandler implements HttpHandler {
     private Map<String, String> uuidToState = new HashMap<>();
 
     /**
-     * Constructs an Order handler. Looks for a file of uuids to manage, and if it doesn't exist, creates one. Expects
+     * Constructs an Order handler. Looks for a file of uuids to manage, and if it doesn't exist, will write its own. Expects
      * file to be in root dir for project.
      */
     public OrderHandler() {
@@ -46,8 +46,9 @@ public class OrderHandler implements HttpHandler {
     }
 
     /**
-     * Handles GET, where it returns all order ids, PUT, which creates a new order id, and DELETE, which checks for a
-     * order id and removes it if it exists.
+     * Handles GET with param "method=getCount", where it returns a count of orders
+     * POST with param "method=createOrder", which creates a new order id
+     * and DELETE with params "method=cancelOrder&uuid=[uuid]", which checks for an order id and removes it if it exists.
      * @param httpExchange
      * @throws IOException
      */
@@ -67,7 +68,7 @@ public class OrderHandler implements HttpHandler {
             } else {
                 sendNotFound(httpExchange, "Unable to find method for query: " + query);
             }
-        } else if (httpExchange.getRequestMethod().equals(("PUT"))) {
+        } else if (httpExchange.getRequestMethod().equals(("POST"))) {
             if (params.get("method").equals("createOrder")) {
                 createOrder(httpExchange);
             } else {
@@ -79,6 +80,9 @@ public class OrderHandler implements HttpHandler {
         }
     }
 
+    /*
+        streams over String params, parses them into a map
+     */
     private Map<String, String> parseParams(String query) {
         return Arrays.asList(query.split("&")).stream()
                 .collect(Collectors.toMap(
@@ -86,6 +90,9 @@ public class OrderHandler implements HttpHandler {
                         param -> param.split("=")[1]));
     }
 
+    /*
+        Response for 404 Not found
+     */
     private void sendNotFound(HttpExchange httpExchange, String message) {
         JsonObject returnObject = new JsonObject();
         returnObject.put("status", "404 Not Found");
@@ -93,6 +100,9 @@ public class OrderHandler implements HttpHandler {
         packageAndSendJson(httpExchange, returnObject);
     }
 
+    /*
+        get count call and response
+     */
     private void getCount(HttpExchange httpExchange) {
         long totalCount = uuidToState.entrySet().stream().count();
         JsonObject returnObject = new JsonObject();
@@ -101,6 +111,9 @@ public class OrderHandler implements HttpHandler {
         packageAndSendJson(httpExchange, returnObject);
     }
 
+    /*
+        order cancellation call and response
+     */
     private void cancelOrder(HttpExchange httpExchange, Map<String, String> params) {
         JsonObject returnObject = new JsonObject();
         returnObject.put("status", "200 OK");
@@ -116,17 +129,22 @@ public class OrderHandler implements HttpHandler {
         }
     }
 
+    /*
+        order creation call and response
+     */
     private void createOrder(HttpExchange httpExchange) {
         JsonObject returnObject = new JsonObject();
         returnObject.put("status", "200 OK");
         String uuidStr = UUID.randomUUID().toString();
         uuidToState.put(uuidStr, "created");
         returnObject.put("uuid", uuidStr);
-        System.out.println("created order with uuid " + uuidStr);
         persist();
         packageAndSendJson(httpExchange, returnObject);
     }
 
+    /*
+        helper method to package response and send back to client
+     */
     private void packageAndSendJson(HttpExchange httpExchange, JsonObject returnObject) {
         String returnString = returnObject.toJson();
         try {
